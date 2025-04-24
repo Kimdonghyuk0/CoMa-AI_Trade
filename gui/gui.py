@@ -8,6 +8,9 @@ from datetime import datetime, UTC
 
 # 전역 Info 박스와 set_info 함수 선언
 info_box = None
+trading_thread: threading.Thread | None = None
+stop_event: threading.Event | None = None
+
 
 def set_info(msg: str):
     """Info 박스에 메시지 추가 출력하고 자동 스크롤."""
@@ -30,7 +33,7 @@ def run_trading_after_config(config):
     symbol   = config["SYMBOL"]
     interval = Client.KLINE_INTERVAL_15MINUTE
 
-    while True:
+    while not stop_event.is_set():
         
         
             from trading.state import is_in_position_or_waiting
@@ -63,7 +66,7 @@ def run_trading_after_config(config):
 
             # 10초마다 폴링
             time.sleep(10)
-        
+    set_info("⏹️ 자동매매 루프 종료")
 
         
 
@@ -76,7 +79,7 @@ def get_user_settings():
     config = {}
 
     def on_submit():
-        
+        global trading_thread, stop_event
         # 1) 입력값 수집
         b_key    = entry_binance_key.get().strip()
         b_secret = entry_binance_secret.get().strip()
@@ -142,13 +145,17 @@ def get_user_settings():
             try: w.configure(state="disabled")
             except: pass
 
+        if trading_thread and trading_thread.is_alive():
+            stop_event.set()
+        stop_event = threading.Event()
         # 6) 자동매매 루프 스레드 시작
         set_info("✅ 자동매매 루프 시작")
-        threading.Thread(
+        trading_thread =threading.Thread(
             target=run_trading_after_config,
             args=(config,),
             daemon=True
-        ).start()
+        )
+        trading_thread.start()
 
     def on_cancel():
         messagebox.showinfo("종료", "프로그램을 종료합니다.")
@@ -193,6 +200,8 @@ def get_user_settings():
                 w.configure(state="normal")
             except:
                 pass
+        if amount_mode_var.get() == "전액":
+          entry_amount.configure(state="disabled")
         set_info(" ")
         set_info("✏️ 설정 수정 모드로 전환되었습니다. 값을 변경하고 ‘설정 저장 및 시작’을 눌러주세요.")
 
