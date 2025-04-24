@@ -49,13 +49,14 @@ def run_trading_after_config(config):
             if current_open != last_open:
               open_orders = config["client"].futures_get_open_orders(symbol=symbol)
               if open_orders:
-                  set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 전략을 계산합니다.")
+                  set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 타점을 계산합니다.")
                   for order in open_orders:
                     config["client"].futures_cancel_order(symbol=symbol, orderId=order['orderId'])
             
 
             # 2) 새 봉이 떴을 때만 전략 사이클 실행
-            if current_open != last_open and not is_in_position_or_waiting() and elapsed < 65:
+            if current_open != last_open and not is_in_position_or_waiting() and elapsed < 180:
+                print("새 봉이 떴을 때만 전략 사이클 실행")
                 last_open = current_open
                 set_info(" ")
                 set_info(f"📊 최신 차트 수신 완료...")
@@ -225,9 +226,9 @@ def get_user_settings():
     entry_amount.pack()
     entry_amount.configure(state="disabled")
 
-    tk.Label(form, text="📈 목표 손익비 (예:1.5)").pack(pady=(10,0))
+    tk.Label(form, text="📈 목표 손익비 (예:1.3)").pack(pady=(10,0))
     entry_rr = tk.Entry(form, width=20)
-    entry_rr.insert(0, "1.5")
+    entry_rr.insert(0, "1.3")
     entry_rr.pack()
 
     btns = tk.Frame(form)

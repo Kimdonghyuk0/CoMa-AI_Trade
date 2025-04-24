@@ -46,24 +46,24 @@ def run_trading_cycle():
         trend_signal = get_signal(prompt)
         logger.info(f"트렌드 신호: {trend_signal['signal']}")
 
-        # 카운터 트레이딩 신호 확인
-        pull = is_pullback_entry(state, df15)
-        reb = is_rebound_entry(state, df15)
-        breakdown = is_breakdown_entry(state, df15)
-        fail_rebound = is_failed_rebound_entry(state, df15)
-        counter_signal = None or {'signal': '관망'}
+        # # 카운터 트레이딩 신호 확인
+        # pull = is_pullback_entry(state, df15)
+        # reb = is_rebound_entry(state, df15)
+        # breakdown = is_breakdown_entry(state, df15)
+        # fail_rebound = is_failed_rebound_entry(state, df15)
+        # counter_signal = None or {'signal': '관망'}
         
-        if pull or reb or breakdown or fail_rebound:
-            prompt_ct = build_prompt(state, ind1h, ind15m, df1h, df15, mode='counter')
-            counter_signal = get_signal(prompt_ct)
-            logger.info(f"카운터 트레이딩 신호: {counter_signal['signal'] if counter_signal else '없음'}")
+        # if pull or reb or breakdown or fail_rebound:
+        #     prompt_ct = build_prompt(state, ind1h, ind15m, df1h, df15, mode='counter')
+        #     counter_signal = get_signal(prompt_ct)
+        #     logger.info(f"카운터 트레이딩 신호: {counter_signal['signal'] if counter_signal else '없음'}")
 
         # 최종 신호 결정
-        final_signal = trend_signal if trend_signal['signal'] != '관망' else (counter_signal or {'signal':'관망'})
+        # final_signal = trend_signal if trend_signal['signal'] != '관망' else (counter_signal or {'signal':'관망'})
         
-        if final_signal['signal'] != '관망':
-            log_success(f"거래 신호 감지: {final_signal['signal']}")
-            place_order(final_signal, LEVERAGE)
+        if trend_signal['signal'] != '관망':
+            log_success(f"거래 신호 감지: {trend_signal['signal']}")
+            place_order(trend_signal, LEVERAGE)
         else:
             log_warning("현재 관망 상태입니다.")
             set_info("📉 리스크 대비 리워드 비율(RR) 미달 → 진입 보류하고 관망 유지 중입니다.")
