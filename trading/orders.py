@@ -24,9 +24,26 @@ def place_order(data, leverage):
             # 예상치 못한 모드는 전액 사용
             usd_to_use = balance
         entry_price = data["entry"]
-        raw = Decimal(usd_to_use) * Decimal(leverage) / Decimal(entry_price)
-            # '0.0001' = 소수점 4자리
-        qty = float(raw.quantize(Decimal('0.0001'), rounding=ROUND_DOWN))
+
+        info = client.futures_exchange_info()
+        step_size = None
+        for s in info['symbols']:
+            if s['symbol'] == SYMBOL:
+                for f in s['filters']:
+                    if f['filterType'] == 'LOT_SIZE':
+                        step_size = f['stepSize']
+                        break
+                break
+
+        if step_size is None:
+            # 못 읽어왔으면 기본 0.0001
+            quant = Decimal('0.0001')
+        else:
+            quant = Decimal(step_size)
+
+            
+        raw_qty = Decimal(usd_to_use) * Decimal(leverage) / Decimal(entry_price)
+        qty = float(raw_qty.quantize(quant, rounding=ROUND_DOWN))
         side = 'BUY' if data['signal']=='롱' else 'SELL'
         # Info: 진입 정보 출력
         log = (

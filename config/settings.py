@@ -7,6 +7,8 @@ LEVERAGE = None
 SYMBOL = None
 TARGET_RR = None
 set_info = None
+AMOUNT_VALUE = None
+AMOUNT_MODE = None  
 
 def configure(config_dict):
     """

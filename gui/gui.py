@@ -84,9 +84,17 @@ def get_user_settings():
         sym = symbol_var.get()
         lev      = int(leverage_var.get())
         rr_txt   = entry_rr.get().strip()
-        amount_value = entry_amount.get().strip()
+        amount_value_str = entry_amount.get().strip()
         amount_mode  = amount_mode_var.get()
 
+        if amount_mode != "전액":
+         try:
+            amount_value = float(amount_value_str)
+         except ValueError:
+            messagebox.showerror("입력 오류", "금액 또는 퍼센트를 올바른 숫자로 입력해주세요.")
+            return
+        else:
+          amount_value = None  # 전액 모드일 땐 수치 필요 없음
         # 2) 유효성 검사
         if not (b_key and b_secret and o_key and rr_txt):
             messagebox.showerror("입력 오류", "모든 값을 입력해주세요.")
@@ -156,7 +164,7 @@ def get_user_settings():
 
     # 왼쪽: 입력 폼
     form = tk.Frame(root)
-    form.place(x=10, y=130, width=400, height=580)
+    form.place(x=10, y=10, width=400, height=580)
 
     tk.Label(form, text="🟢 Binance API Key").pack(pady=(10,0))
     entry_binance_key = tk.Entry(form, width=50)
@@ -197,7 +205,7 @@ def get_user_settings():
     entry_amount = tk.Entry(form, width=20)
     entry_amount.insert(0, "100")
     entry_amount.pack()
-   
+    entry_amount.configure(state="disabled")
 
     tk.Label(form, text="📈 목표 손익비 (예:1.5)").pack(pady=(10,0))
     entry_rr = tk.Entry(form, width=20)
