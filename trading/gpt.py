@@ -1,10 +1,10 @@
 import json
 from openai import OpenAI
-from config.settings import OPENAI_API_KEY, TARGET_RR, SYMBOL
-from config.settings import set_info  # GUI Info 로그용
+import config.settings as settings
+
 import re
 # OpenAI API 키 설정
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
     """
      시장 상태 및 모드(트렌드/반전)에 따른 프롬프트 템플릿 생성
@@ -44,7 +44,7 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
     prompt_json = json.dumps(payload, ensure_ascii=False, default=str)
     # 환경정보 및 조건 안내
     template = f"""
-당신은 {SYMBOL} 선물 트레이딩 전문가입니다.
+당신은 {settings.SYMBOL} 선물 트레이딩 전문가입니다.
 
 1) 차트의 흐름을 파악하고, 이동평균(MA)의 배열, RSI·MACD·볼린저밴드 같은 주요 모멘텀·추세 지표를 종합해
    - 상승·하락·횡보
@@ -62,7 +62,7 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 
 3) 그 판단을 바탕으로 최적의 ‘롱’/‘숏’/‘관망’ 신호를 제안하고,
    진입가(entry), 익절가(tp), 손절가(sl)를 산출하세요.
-   리스크-리워드(RR)는 최소 {TARGET_RR} 이상이어야 합니다.
+   리스크-리워드(RR)는 최소 {settings.TARGET_RR} 이상이어야 합니다.
 
 아래는 분석용 전체 캔들 시퀀스와 최신 지표 데이터입니다:
  최근 1시간봉 30개 (1h_candles)
@@ -72,11 +72,11 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 ```json
 {prompt_json}
 ```※ 관망("관망")은 **예상 승률이 50% 미만인 경우**에만 사용하세요.
-신호가 애매하거나 RR이 {TARGET_RR} 미만이라면, 항상 압도적으로 **시장가 대비 유리한 진입가**를 제안하세요.
+신호가 애매하거나 RR이 {settings.TARGET_RR} 미만이라면, 항상 압도적으로 **시장가 대비 유리한 진입가**를 제안하세요.
 특히 승률이 낮을수록, 시장가에서 더 멀리(더 보수적으로) 진입가를 설정해도 좋습니다.  
 최대 **15분**까지 기다려 체결될 수 있는 수준이라면, 체결 우선순위보다 가격 우위를 더 높게 가져가세요.
 
-여러 개의 유효한 진입 기회 중 RR ≥ {TARGET_RR}을 만족하는 옵션이 있다면,
+여러 개의 유효한 진입 기회 중 RR ≥ {settings.TARGET_RR}을 만족하는 옵션이 있다면,
 실제 차트 패턴과 지지·저항 구간을 기준으로 가장 승률이 높고 확실한 RR 값을 제시하세요.
 
 TP(익절) / SL(손절)은 최근 가격 범위를 벗어나는 **과도한 값은 지양**하며,

@@ -1,5 +1,5 @@
 from binance.client import Client
-from config.settings import SYMBOL, LEVERAGE, set_info
+import config.settings as settings
 from utils.data import fetch_klines
 from utils.indicators import compute_indicators
 from analysis.market import detect_market_state
@@ -17,8 +17,8 @@ def run_trading_cycle():
     try:
         # 데이터 수집
         logger.info("차트 데이터 수집 중...")
-        df15 = compute_indicators(fetch_klines(SYMBOL, Client.KLINE_INTERVAL_15MINUTE, 80))
-        df1h = compute_indicators(fetch_klines(SYMBOL, Client.KLINE_INTERVAL_1HOUR, 80))
+        df15 = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_15MINUTE, 80))
+        df1h = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_1HOUR, 80))
         logger.info("차트 데이터 수집 완료")
 
         # 시장 상태 분석
@@ -63,10 +63,10 @@ def run_trading_cycle():
         
         if trend_signal['signal'] != '관망':
             log_success(f"거래 신호 감지: {trend_signal['signal']}")
-            place_order(trend_signal, LEVERAGE)
+            place_order(trend_signal, settings.LEVERAGE)
         else:
             log_warning("현재 관망 상태입니다.")
-            set_info("📉 리스크 대비 리워드 비율(RR) 미달 → 진입 보류하고 관망 유지 중입니다.")
+            settings.set_info("📉 리스크 대비 리워드 비율(RR) 미달 → 진입 보류하고 관망 유지 중입니다.")
         
         logger.info("트레이딩 사이클 완료")
         return df15['open_time'].iloc[-1]

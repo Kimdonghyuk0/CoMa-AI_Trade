@@ -44,14 +44,14 @@ def run_trading_after_config(config):
             current_open_diff = current_open.replace(tzinfo=UTC)
             now_utc = datetime.now(UTC)
             elapsed = abs((now_utc - current_open_diff).total_seconds())
-            
-            # 🧠 [추가] 예약 주문이 존재하면 취소 처리
-            if current_open != last_open:
+            # print("current_open", current_open)
+            #  [추가] 예약 주문이 존재하면 취소 처리
+            if current_open != last_open and not is_in_position_or_waiting():
               open_orders = config["client"].futures_get_open_orders(symbol=symbol)
+            #   print("open_orders", open_orders)
               if open_orders:
                   set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 타점을 계산합니다.")
-                  for order in open_orders:
-                    config["client"].futures_cancel_order(symbol=symbol, orderId=order['orderId'])
+                  config["client"].futures_cancel_all_open_orders(symbol=symbol)
             
 
             # 2) 새 봉이 떴을 때만 전략 사이클 실행
@@ -191,9 +191,9 @@ def get_user_settings():
     tk.OptionMenu(form, symbol_var, "BTCUSDT", "ETHUSDT", "XRPUSDT").pack()
 
 
-    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7)").pack(pady=(10,0))
+    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7,8,9,10)").pack(pady=(10,0))
     leverage_var = tk.StringVar(value="1")
-    tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7").pack()
+    tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7","8","9","10").pack()
     def on_edit():
         # 폼 안의 모든 위젯을 활성화
         for w in form.winfo_children():

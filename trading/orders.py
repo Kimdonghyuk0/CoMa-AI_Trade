@@ -1,8 +1,56 @@
 from binance.exceptions import BinanceAPIException
 from config.api_client import get_client
-from config.settings import set_info, SYMBOL, LEVERAGE, AMOUNT_MODE, AMOUNT_VALUE
+import config.settings as settings
 import time
+import threading
 from decimal import Decimal, ROUND_DOWN
+
+def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
+    client = get_client()
+    opp_side = 'SELL' if is_long else 'BUY'
+
+    # 1) 익절 주문
+    tp_order = client.futures_create_order(
+        symbol=settings.SYMBOL,
+        side=opp_side,
+        type='TAKE_PROFIT_MARKET',
+        stopPrice=str(tp_price),
+        closePosition=True
+    )
+    tp_id = tp_order['orderId']
+    settings.set_info(f"▶️ 익절 주문 접수) @ {tp_price:.2f}")
+
+    # 2) 손절 주문
+    sl_order = client.futures_create_order(
+        symbol=settings.SYMBOL,
+        side=opp_side,
+        type='STOP_MARKET',
+        stopPrice=str(sl_price),
+        closePosition=True
+        )
+    sl_id = sl_order['orderId']
+    settings.set_info(f"▶️ 손절 주문 접수) @ {sl_price:.2f}")
+    # 익절 손절 체결 대기 & P&L 계산
+    while True:
+        time.sleep(1)
+        info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
+        if info_tp['status'] == 'FILLED':
+            tp_fill = Decimal(info_tp['avgPrice'])
+            profit = (tp_fill - filled_price) * qty if is_long else (filled_price - tp_fill) * qty
+            pnl_pct = profit / (filled_price * qty) * Decimal(100)
+            settings.set_info(f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익 \n{profit:.2f} USDT ({pnl_pct:.2f}%)")
+            return  # 익절되었으면 손절 리스너 종료
+        
+        # 손절 체결 대기 & P&L 계산
+        time.sleep(1)
+        info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
+        if info_sl['status'] == 'FILLED':
+            sl_fill = Decimal(info_sl['avgPrice'])
+            loss = -((filled_price - sl_fill) * qty) if is_long else (sl_fill - filled_price) * qty
+            pnl_pct = loss / (filled_price * qty) * Decimal(100)
+            settings.set_info(f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실 \n{loss:.2f} USDT ({pnl_pct:.2f}%)")
+            return
+
 
 def place_order(data, leverage):
     client = get_client()
@@ -12,17 +60,17 @@ def place_order(data, leverage):
     """
     try:
         # 1) 레버리지 설정 & USDT 잔고 조회
-        client.futures_change_leverage(symbol=SYMBOL, leverage=leverage)
+        client.futures_change_leverage(symbol=settings.SYMBOL, leverage=settings.LEVERAGE)
         balances = client.futures_account_balance()
         balance = next((float(b['balance']) for b in balances if b['asset']=='USDT'), 0.0)
 
         # 2) 사용할 금액 계산
-        if AMOUNT_MODE == "전액":
+        if settings.AMOUNT_MODE == "전액":
             usd_to_use = balance
-        elif AMOUNT_MODE == "사용자 입력($)":
-            usd_to_use = AMOUNT_VALUE
-        elif AMOUNT_MODE == "전액의(%)":
-            usd_to_use = balance * (AMOUNT_VALUE / 100)
+        elif settings.AMOUNT_MODE == "사용자 입력($)":
+            usd_to_use = settings.AMOUNT_VALUE
+        elif settings.AMOUNT_MODE == "전액의(%)":
+            usd_to_use = balance * (settings.AMOUNT_VALUE / 100)
         else:
             usd_to_use = balance
 
@@ -32,7 +80,7 @@ def place_order(data, leverage):
         info = client.futures_exchange_info()
         step_size = "0.0001"
         for s in info['symbols']:
-            if s['symbol'] == SYMBOL:
+            if s['symbol'] == settings.SYMBOL:
                 for f in s['filters']:
                     if f['filterType'] == 'LOT_SIZE':
                         step_size = f['stepSize']
@@ -50,71 +98,36 @@ def place_order(data, leverage):
         pos_label = '롱 포지션' if is_long else '숏 포지션'
 
         # 6) 진입 주문 접수
-        set_info(" ")
-        set_info(f"{pos_label} 주문 접수 — 수량 {qty} {SYMBOL[:-4]} @ {entry_price:.2f} USDT  \n(사용금액 {usd_to_use:.2f} USDT, 레버리지 {leverage}x)")
+        settings.set_info(" ")
+        settings.set_info(f"{pos_label} 주문 접수 — 수량 {qty} {settings.SYMBOL[:-4]} @ {entry_price:.2f} USDT  \n(사용금액 {usd_to_use:.2f} USDT, 레버리지 {leverage}x)")
         entry = client.futures_create_order(
-            symbol=SYMBOL, side=side, type='LIMIT',
+            symbol=settings.SYMBOL, side=side, type='LIMIT',
             price=str(entry_price), quantity=qty, timeInForce='GTC'
         )
         entry_id = entry['orderId']
 
-        # 7) 진입 체결 대기
-        while True:
-            time.sleep(1)
-            st = client.futures_get_order(symbol=SYMBOL, orderId=entry_id)['status']
-            if st == 'FILLED':
-                filled_price = Decimal(client.futures_get_order(symbol=SYMBOL, orderId=entry_id)['avgPrice'])
-                set_info(f"✅ {pos_label} 거래 체결 — {filled_price:.2f} USDT")
-                break
-            if st in ('CANCELED','REJECTED','EXPIRED'):
-                set_info(f"⚠️ {pos_label} 주문 실패(orderId={entry_id}, status={st})")
-                return
+        def _wait_fill_and_spawn():
+            while True:
+                time.sleep(1)
+                info_e = client.futures_get_order(symbol=settings.SYMBOL, orderId=entry_id)
+                status = info_e['status']
+                if status == 'FILLED':
+                    filled_price = Decimal(info_e['avgPrice'])
+                    settings.set_info(f"✅ {pos_label} 체결 — {filled_price:.2f} USDT")
+                    # 체결되면 백그라운드로 TP/SL 스레드 시작
+                    tp_price = Decimal(str(data["tp"]))
+                    sl_price = Decimal(str(data["sl"]))
+                    threading.Thread(
+                        target=_order_lifecycle,
+                        args=(qty, is_long, filled_price, tp_price, sl_price),
+                        daemon=True
+                    ).start()
+                    return
+                elif status in ('CANCELED','REJECTED','EXPIRED'):
+                    settings.set_info(f"⚠️ {pos_label} 주문 실패(orderId={entry_id}, status={status})")
+                    return
 
-        # 8) 익절 & 손절 주문
-        tp_price = Decimal(str(data["tp"]))
-        sl_price = Decimal(str(data["sl"]))
-        opp_side = 'SELL' if is_long else 'BUY'
-        tp_label = '익절'
-        sl_label = '손절'
-
-        # 익절 마켓 주문
-        client.futures_create_order(
-            symbol=SYMBOL, side=opp_side, type='TAKE_PROFIT_MARKET',
-            stopPrice=str(tp_price), closePosition=True
-        )
-        
-        set_info(f"▶️ {tp_label} 주문 접수) @ {tp_price:.2f}")
-
-        # 익절 체결 대기 & P&L 계산
-        while True:
-            time.sleep(1)
-            info_tp = client.futures_get_order(symbol=SYMBOL, orderId=tp_id)
-            if info_tp['status'] == 'FILLED':
-                tp_fill = Decimal(info_tp['avgPrice'])
-                profit = (tp_fill - filled_price) * Decimal(qty) if is_long else (filled_price - tp_fill) * Decimal(qty)
-                pnl_pct = profit / (filled_price * Decimal(qty)) * Decimal(100)
-                set_info(f"🎉 {tp_label} 체결 — {tp_fill:.2f} USDT  \n수익 {profit:.2f} USDT ({pnl_pct:.2f}%)")
-                break
-
-        # 손절 마켓 주문
-        client.futures_create_order(
-            symbol=SYMBOL, side=opp_side, type='STOP_MARKET',
-            stopPrice=str(sl_price), closePosition=True
-                 
-        )
-        
-        set_info(f"▶️ {sl_label} ) @ {sl_price:.2f}")
-
-        # 손절 체결 대기 & P&L 계산
-        while True:
-            time.sleep(1)
-            info_sl = client.futures_get_order(symbol=SYMBOL, orderId=sl_id)
-            if info_sl['status'] == 'FILLED':
-                sl_fill = Decimal(info_sl['avgPrice'])
-                loss = (filled_price - sl_fill) * Decimal(qty) if is_long else (sl_fill - filled_price) * Decimal(qty)
-                pnl_pct = loss / (filled_price * Decimal(qty)) * Decimal(100)
-                set_info(f"⚠️ {sl_label} 체결 — {sl_fill:.2f} USDT  \n손실 {loss:.2f} USDT ({pnl_pct:.2f}%)")
-                break
+        threading.Thread(target=_wait_fill_and_spawn, daemon=True).start()
 
     except BinanceAPIException as e:
-        set_info(f"❌ 주문 오류: {e}")
+        settings.set_info(f"❌ 주문 오류: {e}")

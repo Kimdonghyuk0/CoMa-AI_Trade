@@ -14,7 +14,7 @@ def configure(config_dict):
     """
     get_user_settings()에서 받은 설정 dict를 그대로 전역 변수에 할당.
     """
-    global client, OPENAI_API_KEY, LEVERAGE, SYMBOL, TARGET_RR, set_info
+    global client, OPENAI_API_KEY, LEVERAGE, SYMBOL, TARGET_RR, set_info, AMOUNT_VALUE, AMOUNT_MODE
     client = config_dict["client"]
     OPENAI_API_KEY = config_dict["OPENAI_API_KEY"]
     LEVERAGE = config_dict["LEVERAGE"]
