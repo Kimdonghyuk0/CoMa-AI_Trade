@@ -186,6 +186,15 @@ def get_user_settings():
     tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7)").pack(pady=(10,0))
     leverage_var = tk.StringVar(value="1")
     tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7").pack()
+    def on_edit():
+        # 폼 안의 모든 위젯을 활성화
+        for w in form.winfo_children():
+            try:
+                w.configure(state="normal")
+            except:
+                pass
+        set_info(" ")
+        set_info("✏️ 설정 수정 모드로 전환되었습니다. 값을 변경하고 ‘설정 저장 및 시작’을 눌러주세요.")
 
     def on_amount_mode_change(selection):
         if selection == "전액":
@@ -219,6 +228,14 @@ def get_user_settings():
         text="✅ 설정 저장 및 시작",
         command=on_submit,
         bg="#4CAF50",
+        fg="white",
+        width=15
+    ).pack(side="left", padx=5)
+    tk.Button(
+        btns,
+        text="✏️ 설정 수정",
+        command=on_edit,
+        bg="#FFA500",
         fg="white",
         width=15
     ).pack(side="left", padx=5)
