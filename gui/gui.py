@@ -203,7 +203,7 @@ def get_user_settings():
         if amount_mode_var.get() == "전액":
           entry_amount.configure(state="disabled")
         set_info(" ")
-        set_info("✏️ 설정 수정 모드로 전환되었습니다. 값을 변경하고 ‘설정 저장 및 시작’을 눌러주세요.")
+        set_info("✏️ 설정 수정 모드로 전환되었습니다. \n 값을 변경하고 ‘설정 저장 및 시작’을 눌러주세요.")
 
     def on_amount_mode_change(selection):
         if selection == "전액":
