@@ -263,6 +263,6 @@ def get_user_settings():
     info_frame.place(x=420, y=10, width=570, height=580)
     info_box = tk.Text(info_frame, bg="#f5f5f5")
     info_box.pack(fill="both", expand=True)
-
+    tk.Label(root, text="* 설정 수정 시, 바이낸스에 예약된 모든 주문은 *반드시* 취소해야 합니다. *", fg="red").place(x=10, y=600)
     root.mainloop()
     return config
