@@ -19,3 +19,6 @@ def configure(config_dict):
     SYMBOL = config_dict["SYMBOL"]
     TARGET_RR = config_dict["TARGET_RR"]
     set_info = config_dict["set_info"]
+    AMOUNT_VALUE = config_dict["AMOUNT_VALUE"]
+    AMOUNT_MODE = config_dict["AMOUNT_MODE"]
+

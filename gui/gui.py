@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import messagebox
 from binance.client import Client
@@ -42,7 +41,7 @@ def run_trading_after_config(config):
             current_open_diff = current_open.replace(tzinfo=UTC)
             now_utc = datetime.now(UTC)
             elapsed = abs((now_utc - current_open_diff).total_seconds())
-            set_info(f"elapsed: {elapsed}")
+            
             # 🧠 [추가] 예약 주문이 존재하면 취소 처리
             if current_open != last_open:
               open_orders = config["client"].futures_get_open_orders(symbol=symbol)
@@ -77,6 +76,7 @@ def get_user_settings():
     config = {}
 
     def on_submit():
+        
         # 1) 입력값 수집
         b_key    = entry_binance_key.get().strip()
         b_secret = entry_binance_secret.get().strip()
@@ -84,6 +84,8 @@ def get_user_settings():
         sym = symbol_var.get()
         lev      = int(leverage_var.get())
         rr_txt   = entry_rr.get().strip()
+        amount_value = entry_amount.get().strip()
+        amount_mode  = amount_mode_var.get()
 
         # 2) 유효성 검사
         if not (b_key and b_secret and o_key and rr_txt):
@@ -117,7 +119,10 @@ def get_user_settings():
             "LEVERAGE": lev,
             "SYMBOL": sym,
             "TARGET_RR": target_rr,
-            "set_info": set_info
+            "set_info": set_info,
+            "AMOUNT_VALUE": amount_value,
+            "AMOUNT_MODE": amount_mode
+
         })
         from config.settings import configure
         configure(config)
@@ -170,9 +175,29 @@ def get_user_settings():
     tk.OptionMenu(form, symbol_var, "BTCUSDT", "ETHUSDT", "XRPUSDT").pack()
 
 
-    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5)").pack(pady=(10,0))
+    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7)").pack(pady=(10,0))
     leverage_var = tk.StringVar(value="1")
-    tk.OptionMenu(form, leverage_var, "1","2","3","4","5").pack()
+    tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7").pack()
+
+    def on_amount_mode_change(selection):
+        if selection == "전액":
+            entry_amount.configure(state="disabled")
+        else:
+            entry_amount.configure(state="normal")
+    tk.Label(form, text="💰 매매당 진입 금액").pack(pady=(10,0))
+    amount_mode_var = tk.StringVar(value="전액")
+    tk.OptionMenu(
+        form,
+        amount_mode_var,
+        "전액", "사용자 입력($)", "전액의(%)",
+        command=on_amount_mode_change
+    ).pack()
+
+    tk.Label(form, text="💵 금액(달러$) or % 입력 (예: 100 or 25)").pack(pady=(5,0))
+    entry_amount = tk.Entry(form, width=20)
+    entry_amount.insert(0, "100")
+    entry_amount.pack()
+   
 
     tk.Label(form, text="📈 목표 손익비 (예:1.5)").pack(pady=(10,0))
     entry_rr = tk.Entry(form, width=20)
