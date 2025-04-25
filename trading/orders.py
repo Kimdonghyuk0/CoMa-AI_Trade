@@ -32,7 +32,7 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
     settings.set_info(f"▶️ 손절 주문 접수) @ {sl_price:.2f}")
     # 익절 손절 체결 대기 & P&L 계산
     while True:
-        time.sleep(2)
+        time.sleep(50)
         info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
         if info_tp['status'] == 'FILLED':
             tp_fill = Decimal(info_tp['avgPrice'])
@@ -42,7 +42,7 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
             return  # 익절되었으면 손절 리스너 종료
         
         # 손절 체결 대기 & P&L 계산
-        time.sleep(2)
+        time.sleep(10)
         info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
         if info_sl['status'] == 'FILLED':
             sl_fill = Decimal(info_sl['avgPrice'])

@@ -4,7 +4,7 @@ from binance.client import Client
 import threading
 import time
 from utils.data import fetch_klines
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timezone
 
 # 전역 Info 박스와 set_info 함수 선언
 info_box = None
@@ -28,45 +28,62 @@ def run_trading_after_config(config):
     set_info(" ")
     set_info("🔧 시스템 부팅 중... 전략 판단 및 시장 탐색 준비 완료.")
     set_info(" ")
-    set_info("⏳ 대기중... 최대 15분 이내에 실행됩니다.")
-    last_open = None
+    set_info("⏳ 대기중... 포지션 보유중이 아닐 경우, 최대 15분 이내에 실행됩니다.")
+    # last_open = None
     symbol   = config["SYMBOL"]
     interval = Client.KLINE_INTERVAL_15MINUTE
-
+    last_minute = -1
+    # elapsed = 10000
+    # df15 = fetch_klines(symbol, interval, limit=1)
+    # current_open = df15['open_time'].iloc[-1]
+    # last_open = current_open
+    # time.sleep(1)
     while not stop_event.is_set():
+            now_utc = datetime.now(timezone.utc)
+            minute = now_utc.minute
+            second = now_utc.second
         
-        
-            from trading.state import is_in_position_or_waiting
+            from trading.state import is_in_position
             
             # 1) 가장 최근 15분봉 한 개만 가져오기
-            df15 = fetch_klines(symbol, interval, limit=1)
-            current_open = df15['open_time'].iloc[-1]
-            current_open_diff = current_open.replace(tzinfo=UTC)
-            now_utc = datetime.now(UTC)
-            elapsed = abs((now_utc - current_open_diff).total_seconds())
-            # print("current_open", current_open)
-            #  [추가] 예약 주문이 존재하면 취소 처리
-            if current_open != last_open and not is_in_position_or_waiting():
-              open_orders = config["client"].futures_get_open_orders(symbol=symbol)
-            #   print("open_orders", open_orders)
-              if open_orders:
-                  set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 타점을 계산합니다.")
-                  config["client"].futures_cancel_all_open_orders(symbol=symbol)
+            if minute % 15 == 0 and minute != last_minute and second < 5 and not is_in_position():
+                print("15분봉 떴을 때만 전략 사이클 실행")
+                last_minute = minute
+                try:
+                    time.sleep(2)
+                    df15 = fetch_klines(symbol, interval, limit=1)
+                    current_open = df15['open_time'].iloc[-1]
+                    open_orders = config["client"].futures_get_open_orders(symbol=symbol)
+                    #print("open_orders", open_orders)
+                    if open_orders:
+                        set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 타점을 계산합니다.")
+                        config["client"].futures_cancel_all_open_orders(symbol=symbol)
+                    print("새 봉이 떴을 때만 전략 사이클 실행")
+                    # last_open = current_open
+                    set_info(" ")
+                    set_info(f"📊 최신 차트 수신 완료...")
+                    time.sleep(0.2)
+                    set_info(f"UTC: {current_open}")
+                    set_info(f"🤖 전략 최적화 중... 시장 움직임에 가장 적합한 진입 타점 추출 중...")
+                    run_trading_cycle()
+                    time.sleep(4.5)
+                except Exception as e:
+                    set_info(f"🚨 에러 발생: {str(e)}")
+
             
+            # #now_utc = datetime.now(UTC)
+            
+            # # print("current_open", current_open)
+            # #  [추가] 예약 주문이 존재하면 취소 처리
+            # if current_open != last_open and not is_in_position_or_waiting():
+              
 
-            # 2) 새 봉이 떴을 때만 전략 사이클 실행
-            if current_open != last_open and not is_in_position_or_waiting() and elapsed < 180:
-                print("새 봉이 떴을 때만 전략 사이클 실행")
-                last_open = current_open
-                set_info(" ")
-                set_info(f"📊 최신 차트 수신 완료...")
-                time.sleep(0.2)
-                set_info(f"UTC: {current_open}")
-                set_info(f"🤖 전략 최적화 중... 시장 움직임에 가장 적합한 진입 타점 추출 중...")
-                run_trading_cycle()
+            # # 2) 새 봉이 떴을 때만 전략 사이클 실행
+            # if current_open != last_open and not is_in_position_or_waiting():
+               
 
-            # 10초마다 폴링
-            time.sleep(10)
+            # 1초마다 폴링
+            time.sleep(1)
     set_info("⏹️ 자동매매 루프 종료")
 
         
@@ -228,7 +245,7 @@ def get_user_settings():
 
     tk.Label(form, text="📈 목표 손익비 (예:1.3)").pack(pady=(10,0))
     entry_rr = tk.Entry(form, width=20)
-    entry_rr.insert(0, "1.3")
+    entry_rr.insert(0, "1.0")
     entry_rr.pack()
 
     btns = tk.Frame(form)
