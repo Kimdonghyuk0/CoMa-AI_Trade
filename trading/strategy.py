@@ -17,8 +17,8 @@ def run_trading_cycle():
     try:
         # 데이터 수집
         logger.info("차트 데이터 수집 중...")
-        df15 = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_15MINUTE, 80))
-        df1h = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_1HOUR, 80))
+        df15 = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_15MINUTE, 60))
+        df1h = compute_indicators(fetch_klines(settings.SYMBOL, Client.KLINE_INTERVAL_1HOUR, 120))
         logger.info("차트 데이터 수집 완료")
 
         # 시장 상태 분석
