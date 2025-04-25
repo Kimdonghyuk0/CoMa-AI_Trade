@@ -32,24 +32,37 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
     settings.set_info(f"▶️ 손절 주문 접수) @ {sl_price:.2f}")
     # 익절 손절 체결 대기 & P&L 계산
     while True:
-        time.sleep(50)
-        info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
-        if info_tp['status'] == 'FILLED':
-            tp_fill = Decimal(info_tp['avgPrice'])
-            profit = (tp_fill - filled_price) * qty if is_long else (filled_price - tp_fill) * qty
-            pnl_pct = profit / (filled_price * qty) * Decimal(100)
-            settings.set_info(f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익 \n{profit:.2f} USDT ({pnl_pct:.2f}%)")
-            return  # 익절되었으면 손절 리스너 종료
-        
-        # 손절 체결 대기 & P&L 계산
-        time.sleep(10)
-        info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
-        if info_sl['status'] == 'FILLED':
-            sl_fill = Decimal(info_sl['avgPrice'])
-            loss = -((filled_price - sl_fill) * qty) if is_long else (sl_fill - filled_price) * qty
-            pnl_pct = loss / (filled_price * qty) * Decimal(100)
-            settings.set_info(f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실 \n{loss:.2f} USDT ({pnl_pct:.2f}%)")
-            return
+        try:
+            # 1) 익절 체크 (45초 대기 후)
+            time.sleep(45)
+            info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
+            if info_tp['status'] == 'FILLED':
+                tp_fill = Decimal(info_tp['avgPrice'])
+                profit = (tp_fill - filled_price) * qty if is_long else (filled_price - tp_fill) * qty
+                pnl_pct = profit / (filled_price * qty) * Decimal(100)
+                settings.set_info(
+                    f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익 \n"
+                    f"{profit:.2f} USDT ({pnl_pct:.2f}%)"
+                )
+                return  # 익절되었으면 종료
+
+            # 2) 손절 체크 (15초 대기 후)
+            time.sleep(15)
+            info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
+            if info_sl['status'] == 'FILLED':
+                sl_fill = Decimal(info_sl['avgPrice'])
+                loss = -((filled_price - sl_fill) * qty) if is_long else (sl_fill - filled_price) * qty
+                pnl_pct = loss / (filled_price * qty) * Decimal(100)
+                settings.set_info(
+                    f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실 \n"
+                    f"{loss:.2f} USDT ({pnl_pct:.2f}%)"
+                )
+                return  # 손절되었으면 종료
+
+        except Exception:
+            # 예외는 모두 무시하고 다음 루프로
+            continue
+
 
 
 def place_order(data, leverage):

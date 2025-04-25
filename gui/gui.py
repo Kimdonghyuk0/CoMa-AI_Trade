@@ -258,14 +258,14 @@ def get_user_settings():
         fg="white",
         width=15
     ).pack(side="left", padx=5)
-    tk.Button(
-        btns,
-        text="✏️ 설정 수정",
-        command=on_edit,
-        bg="#FFA500",
-        fg="white",
-        width=15
-    ).pack(side="left", padx=5)
+    # tk.Button(
+    #     btns,
+    #     text="✏️ 설정 수정",
+    #     command=on_edit,
+    #     bg="#FFA500",
+    #     fg="white",
+    #     width=15
+    # ).pack(side="left", padx=5)
     tk.Button(
         btns,
         text="❌ 종료",
