@@ -49,4 +49,12 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     direction = np.sign(delta).fillna(0)
     df['obv'] = (df['volume'] * direction).cumsum()
 
+    # --- ATR (14) ---
+    tr0 = df['high'] - df['low']
+    tr1 = (df['high'] - df['close'].shift(1)).abs()
+    tr2 = (df['low'] - df['close'].shift(1)).abs()
+    df['tr'] = pd.concat([tr0, tr1, tr2], axis=1).max(axis=1)
+    df['atr'] = df['tr'].ewm(span=14, adjust=False).mean()
+    df.drop(columns=['tr'], inplace=True)
+
     return df.dropna()

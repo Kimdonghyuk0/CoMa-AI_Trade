@@ -42,7 +42,7 @@ def run_trading_after_config(config):
             now_utc = datetime.now(timezone.utc)
             minute = now_utc.minute
             second = now_utc.second
-        
+            
             from trading.state import is_in_position
             
             # 1) 가장 최근 15분봉 한 개만 가져오기
@@ -56,7 +56,7 @@ def run_trading_after_config(config):
                     open_orders = config["client"].futures_get_open_orders(symbol=symbol)
                     #print("open_orders", open_orders)
                     if open_orders:
-                        set_info("⛔️ 포착된 진입 타점과 실제 흐름 불일치 — 예약 주문 전부 취소하고 새 타점을 계산합니다.")
+                        set_info("예약 주문 전부 삭제 중...")
                         config["client"].futures_cancel_all_open_orders(symbol=symbol)
                     print("새 봉이 떴을 때만 전략 사이클 실행")
                     # last_open = current_open

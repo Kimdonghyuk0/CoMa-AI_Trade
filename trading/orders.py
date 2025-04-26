@@ -30,40 +30,47 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
         )
     sl_id = sl_order['orderId']
     settings.set_info(f"▶️ 손절 주문 접수) @ {sl_price:.2f}")
-    # 익절 손절 체결 대기 & P&L 계산
+   # qty를 Decimal로 변환
+    qty_dec = Decimal(str(qty))
+
+    # 익절·손절 체결 대기 & P&L 계산
     while True:
         try:
-            # 1) 익절 체크 (45초 대기 후)
+            # 1) 익절 체크 (45초 대기)
             time.sleep(45)
             info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
             if info_tp['status'] == 'FILLED':
                 tp_fill = Decimal(info_tp['avgPrice'])
-                profit = (tp_fill - filled_price) * qty if is_long else (filled_price - tp_fill) * qty
-                pnl_pct = profit / (filled_price * qty) * Decimal(100)
+                profit = (tp_fill - filled_price) * qty_dec if is_long else (filled_price - tp_fill) * qty_dec
+                pnl_pct = profit / (filled_price * qty_dec) * Decimal(100)
                 settings.set_info(
-                    f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익 \n"
+                    f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익\n"
                     f"{profit:.2f} USDT ({pnl_pct:.2f}%)"
                 )
                 return  # 익절되었으면 종료
 
-            # 2) 손절 체크 (15초 대기 후)
+            # 2) 손절 체크 (15초 대기)
             time.sleep(15)
             info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
             if info_sl['status'] == 'FILLED':
                 sl_fill = Decimal(info_sl['avgPrice'])
-                loss = -((filled_price - sl_fill) * qty) if is_long else (sl_fill - filled_price) * qty
-                pnl_pct = loss / (filled_price * qty) * Decimal(100)
+                loss = -(filled_price - sl_fill) * qty_dec if is_long else (sl_fill - filled_price) * qty_dec
+                pnl_pct = loss / (filled_price * qty_dec) * Decimal(100)
                 settings.set_info(
-                    f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실 \n"
+                    f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실\n"
                     f"{loss:.2f} USDT ({pnl_pct:.2f}%)"
                 )
                 return  # 손절되었으면 종료
 
-        except Exception:
-            # 예외는 모두 무시하고 다음 루프로
-            continue
+        except BinanceAPIException as e:
+            # 네트워크/API 에러: 로깅 후 종료
+            settings.set_info(f"⛔️ API 오류: {e}")
+            return
 
-
+        except Exception as e:
+            # 예상치 못한 에러: 로깅 후 종료
+            settings.set_info(f"⛔️ 예외 발생: {e}")
+            return
 
 def place_order(data, leverage):
     client = get_client()
@@ -121,7 +128,7 @@ def place_order(data, leverage):
 
         def _wait_fill_and_spawn():
             while True:
-                time.sleep(1)
+                time.sleep(10)
                 info_e = client.futures_get_order(symbol=settings.SYMBOL, orderId=entry_id)
                 status = info_e['status']
                 if status == 'FILLED':

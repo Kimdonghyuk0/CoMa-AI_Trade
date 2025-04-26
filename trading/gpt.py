@@ -98,9 +98,15 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 아래 조건들을 충족할 때만 진입하세요:
 - RSI, MACD, 거래량, 볼린저밴드, 캔들패턴 등 종합 판단
 
+※ 시장 변동성(가격 범위, ATR, 볼린저밴드 폭 등)을 고려해, 
+ TP/SL 거리도 자동으로 조정하세요.
 
-- 손익비(RR)는 **{settings.TARGET_RR} ≤ RR ≤ {settings.TARGET_RR + 0.2}** 범위 내에 있을 것  
-  (이 범위를 벗어나거나 RR 계산이 불가능할 경우 반드시 "관망")
+- 변동성이 클 경우: TP/SL 거리를 늘려서 비교적 넉넉히 설정
+
+- 변동성이 작을 경우: TP/SL 거리를 줄여서 빠르게 익절 또는 손절
+
+- 손익비(RR)는 **{settings.TARGET_RR} ≤ RR ≤ {settings.TARGET_RR + 0.3}** 범위 내에 있을 것  
+  (단, 변동성이 급격히 축소된 구간(BB 수축, ATR 하락 등)에서는 {settings.TARGET_RR} + 0.2까지만 허용)
    # RR 계산식:
      * 롱: RR = (tp - entry) / (entry - sl)
      * 숏: RR = (entry - tp) / (sl - entry)
