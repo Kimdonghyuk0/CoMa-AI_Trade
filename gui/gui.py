@@ -4,7 +4,8 @@ from binance.client import Client
 import threading
 import time
 from utils.data import fetch_klines
-from datetime import datetime, UTC, timezone
+from datetime import datetime, timezone
+from config.settings import b_key
 
 # 전역 Info 박스와 set_info 함수 선언
 info_box = None
@@ -99,12 +100,11 @@ def get_user_settings():
     def on_submit():
         global trading_thread, stop_event
         # 1) 입력값 수집
-        b_key    = entry_binance_key.get().strip()
         b_secret = entry_binance_secret.get().strip()
-        o_key    = entry_openai_key.get().strip()
+        # o_key    = entry_openai_key.get().strip()
         sym = symbol_var.get()
         lev      = int(leverage_var.get())
-        rr_txt   = entry_rr.get().strip()
+        # rr_txt   = entry_rr.get().strip()
         amount_value_str = entry_amount.get().strip()
         amount_mode  = amount_mode_var.get()
 
@@ -116,17 +116,7 @@ def get_user_settings():
             return
         else:
           amount_value = None  # 전액 모드일 땐 수치 필요 없음
-        # 2) 유효성 검사
-        if not (b_key and b_secret and o_key and rr_txt):
-            messagebox.showerror("입력 오류", "모든 값을 입력해주세요.")
-            return
-        try:
-            target_rr = float(rr_txt)
-            if target_rr <= 0:
-                raise ValueError
-        except:
-            messagebox.showerror("입력 오류", "유효한 손익비(RR)를 입력하세요.")
-            return
+    
 
         # 3) Binance client 생성 테스트 (연결 + 선물 계좌 권한 확인)
         try:
@@ -144,10 +134,8 @@ def get_user_settings():
   
         config.update({
             "client": client,
-            "OPENAI_API_KEY": o_key,
             "LEVERAGE": lev,
             "SYMBOL": sym,
-            "TARGET_RR": target_rr,
             "set_info": set_info,
             "AMOUNT_VALUE": amount_value,
             "AMOUNT_MODE": amount_mode
@@ -191,17 +179,17 @@ def get_user_settings():
     form = tk.Frame(root)
     form.place(x=10, y=10, width=400, height=580)
 
-    tk.Label(form, text="🟢 Binance API Key").pack(pady=(10,0))
-    entry_binance_key = tk.Entry(form, width=50)
-    entry_binance_key.pack()
+    # tk.Label(form, text="🟢 Binance API Key").pack(pady=(10,0))
+    # entry_binance_key = tk.Entry(form, width=50)
+    # entry_binance_key.pack()
 
     tk.Label(form, text="🟢 Binance API Secret").pack(pady=(10,0))
     entry_binance_secret = tk.Entry(form, width=50, show="*")
     entry_binance_secret.pack()
 
-    tk.Label(form, text="🔵 OpenAI API Key").pack(pady=(10,0))
-    entry_openai_key = tk.Entry(form, width=50, show="*")
-    entry_openai_key.pack()
+    # tk.Label(form, text="🔵 OpenAI API Key").pack(pady=(10,0))
+    # entry_openai_key = tk.Entry(form, width=50, show="*")
+    # entry_openai_key.pack()
 
     tk.Label(form, text="📊 거래 종목 선택").pack(pady=(10,0))
     symbol_var = tk.StringVar(value="BTCUSDT")
@@ -213,9 +201,9 @@ def get_user_settings():
     symbol_combo.pack()
     symbol_combo.focus()  # 커서 자동 포커스 (선택 또는 입력 가능)
 
-    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7,8,9,10)").pack(pady=(10,0))
+    tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)").pack(pady=(10,0))
     leverage_var = tk.StringVar(value="1")
-    tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7","8","9","10").pack()
+    tk.OptionMenu(form, leverage_var, "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20").pack()
     def on_edit():
         # 폼 안의 모든 위젯을 활성화
         for w in form.winfo_children():
@@ -234,24 +222,23 @@ def get_user_settings():
         else:
             entry_amount.configure(state="normal")
     tk.Label(form, text="💰 매매당 진입 금액").pack(pady=(10,0))
-    amount_mode_var = tk.StringVar(value="전액")
+    amount_mode_var = tk.StringVar(value="사용자 입력($)")
     tk.OptionMenu(
         form,
         amount_mode_var,
-        "전액", "사용자 입력($)", "전액의(%)",
+        "사용자 입력($)", "전액의(%)",
         command=on_amount_mode_change
     ).pack()
 
-    tk.Label(form, text="💵 금액(달러$) or % 입력 (예: 100 or 25)").pack(pady=(5,0))
+    tk.Label(form, text="💵 금액(달러$) or 비율(%) 입력 (예: 70 or 25)").pack(pady=(5,0))
     entry_amount = tk.Entry(form, width=20)
     entry_amount.insert(0, "100")
     entry_amount.pack()
-    entry_amount.configure(state="disabled")
 
-    tk.Label(form, text="📈 목표 손익비 (예:1.3)").pack(pady=(10,0))
-    entry_rr = tk.Entry(form, width=20)
-    entry_rr.insert(0, "1.0")
-    entry_rr.pack()
+    # tk.Label(form, text="📈 목표 손익비 (예:1.3)").pack(pady=(10,0))
+    # entry_rr = tk.Entry(form, width=20)
+    # entry_rr.insert(0, "1.0")
+    # entry_rr.pack()
 
     btns = tk.Frame(form)
     btns.pack(pady=20)
@@ -285,6 +272,6 @@ def get_user_settings():
     info_frame.place(x=420, y=10, width=570, height=580)
     info_box = tk.Text(info_frame, bg="#f5f5f5")
     info_box.pack(fill="both", expand=True)
-    tk.Label(root, text="* 설정 수정 시, 바이낸스에 예약된 모든 주문은 *반드시* 취소해야 합니다. *", fg="red").place(x=10, y=600)
+    tk.Label(root, text="* 종료 시, 바이낸스에 예약된 모든 주문은 *반드시* 취소해야 합니다. *", fg="red").place(x=10, y=600)
     root.mainloop()
     return config

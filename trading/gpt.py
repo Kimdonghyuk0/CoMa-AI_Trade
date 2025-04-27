@@ -113,8 +113,8 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 
 - 변동성이 작을 경우: TP/SL 거리를 줄여서 빠르게 익절 또는 손절
 
-- 손익비(RR)는 **{settings.TARGET_RR} ≤ RR ≤ {settings.TARGET_RR + 0.3}** 범위 내에 있을 것  
-  (단, 변동성이 급격히 축소된 구간(BB 수축, ATR 하락 등)에서는 {settings.TARGET_RR} + 0.2까지만 허용)
+- 손익비(RR)는 1.0 ≤ RR ≤ 1.3** 범위 내에 있을 것  
+  (단, 변동성이 급격히 축소된 구간(BB 수축, ATR 하락 등)에서는 1.2까지만 허용)
    # RR 계산식:
      * 롱: RR = (tp - entry) / (entry - sl)
      * 숏: RR = (entry - tp) / (sl - entry)
@@ -135,9 +135,10 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 {prompt_json}
 ```
 
-응답은 반드시 아래 JSON 형식으로 출력하세요.
-그리고 JSON 블록 바깥에 `<EOF>`만 따로 출력하세요.
-
+응답은 오직 JSON 오브젝트만으로 구성하십시오.  
+– 최상위에 아래 네 개 필드(“signal”, “entry”, “tp”, “sl”)만 포함  
+– 중첩된 객체나 배열, 추가 텍스트, 주석일체 금지  
+– JSON 블록 바깥에는 반드시 `<EOF>`만 출력  
 예시:
 {{
   "signal": "롱" | "숏" | "관망",
