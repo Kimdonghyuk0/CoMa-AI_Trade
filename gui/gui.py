@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from binance.client import Client
 import threading
 import time
@@ -205,8 +205,13 @@ def get_user_settings():
 
     tk.Label(form, text="📊 거래 종목 선택").pack(pady=(10,0))
     symbol_var = tk.StringVar(value="BTCUSDT")
-    tk.OptionMenu(form, symbol_var, "BTCUSDT", "ETHUSDT", "XRPUSDT").pack()
-
+    symbol_combo = ttk.Combobox(
+        form,
+        textvariable=symbol_var,
+        values=["BTCUSDT", "ETHUSDT", "XRPUSDT","SOLUSDT"],  # 기본 목록
+    )
+    symbol_combo.pack()
+    symbol_combo.focus()  # 커서 자동 포커스 (선택 또는 입력 가능)
 
     tk.Label(form, text="⚙️ 레버리지 (1,2,3,4,5,6,7,8,9,10)").pack(pady=(10,0))
     leverage_var = tk.StringVar(value="1")

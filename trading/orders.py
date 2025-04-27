@@ -3,9 +3,9 @@ from config.api_client import get_client
 import config.settings as settings
 import time
 import threading
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, InvalidOperation
 
-def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
+def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
     client = get_client()
     opp_side = 'SELL' if is_long else 'BUY'
 
@@ -27,11 +27,16 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
         type='STOP_MARKET',
         stopPrice=str(sl_price),
         closePosition=True
-        )
+    )
     sl_id = sl_order['orderId']
     settings.set_info(f"▶️ 손절 주문 접수) @ {sl_price:.2f}")
-   # qty를 Decimal로 변환
-    qty_dec = Decimal(str(qty))
+
+    # qty를 Decimal로 변환 (안전처리)
+    try:
+        qty_dec = Decimal(str(qty))
+    except (InvalidOperation, ValueError) as e:
+        settings.set_info(f"🚨 수량 변환 오류: {qty} ({e})")
+        return
 
     # 익절·손절 체결 대기 & P&L 계산
     while True:
@@ -42,12 +47,8 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
             if info_tp['status'] == 'FILLED':
                 tp_fill = Decimal(info_tp['avgPrice'])
                 profit = (tp_fill - filled_price) * qty_dec if is_long else (filled_price - tp_fill) * qty_dec
-                pnl_pct = profit / (filled_price * qty_dec) * Decimal(100)
-                settings.set_info(
-                    f"🎉 익절 체결 — {tp_fill:.2f} USDT  수익\n"
-                    f"{profit:.2f} USDT ({pnl_pct:.2f}%)"
-                )
-                return  # 익절되었으면 종료
+                settings.set_info(f"🎉 익절 체결 — +{profit:.2f} USDT  수익\n")
+                return
 
             # 2) 손절 체크 (15초 대기)
             time.sleep(15)
@@ -55,34 +56,23 @@ def _order_lifecycle( qty, is_long, filled_price, tp_price, sl_price):
             if info_sl['status'] == 'FILLED':
                 sl_fill = Decimal(info_sl['avgPrice'])
                 loss = -(filled_price - sl_fill) * qty_dec if is_long else (sl_fill - filled_price) * qty_dec
-                pnl_pct = loss / (filled_price * qty_dec) * Decimal(100)
-                settings.set_info(
-                    f"⚠️ 손절 체결 — {sl_fill:.2f} USDT  손실\n"
-                    f"{loss:.2f} USDT ({pnl_pct:.2f}%)"
-                )
-                return  # 손절되었으면 종료
+                settings.set_info(f"⚠️ 손절 체결 — -{loss:.2f} USDT  손실\n")
+                return
 
         except BinanceAPIException as e:
-            # 네트워크/API 에러: 로깅 후 종료
             settings.set_info(f"⛔️ API 오류: {e}")
             return
-
         except Exception as e:
-            # 예상치 못한 에러: 로깅 후 종료
             settings.set_info(f"⛔️ 예외 발생: {e}")
             return
 
 def place_order(data, leverage):
     client = get_client()
-    """
-    진입 신호에 따라 선물 주문 및 OCO 설정
-    — 롱/숏 직관적 메시지 + 체결 시각·가격·P&L 출력
-    """
     try:
         # 1) 레버리지 설정 & USDT 잔고 조회
         client.futures_change_leverage(symbol=settings.SYMBOL, leverage=settings.LEVERAGE)
         balances = client.futures_account_balance()
-        balance = next((float(b['balance']) for b in balances if b['asset']=='USDT'), 0.0)
+        balance = next((float(b['balance']) for b in balances if b['asset'] == 'USDT'), 0.0)
 
         # 2) 사용할 금액 계산
         if settings.AMOUNT_MODE == "전액":
@@ -94,7 +84,16 @@ def place_order(data, leverage):
         else:
             usd_to_use = balance
 
-        entry_price = Decimal(str(data["entry"]))
+        # ✅ entry 값 검증
+        entry_raw = data.get("entry")
+        if entry_raw is None:
+            settings.set_info(f"🚨 entry 값 없음")
+            return
+        try:
+            entry_price = Decimal(str(entry_raw))
+        except (InvalidOperation, ValueError) as e:
+            settings.set_info(f"🚨 entry 변환 오류: {entry_raw} ({e})")
+            return
 
         # 3) 수량 단위(stepSize) 조회
         info = client.futures_exchange_info()
@@ -108,13 +107,23 @@ def place_order(data, leverage):
                 break
         quant = Decimal(step_size)
 
-        # 4) 주문 수량 계산 (레버리지 반영)
-        raw_qty = Decimal(str(usd_to_use)) * Decimal(str(leverage)) / entry_price
+        # 4) 주문 수량 계산
+        try:
+            raw_qty = Decimal(str(usd_to_use)) * Decimal(str(leverage)) / entry_price
+        except (InvalidOperation, ZeroDivisionError) as e:
+            settings.set_info(f"🚨 수량 계산 오류: usd_to_use={usd_to_use}, leverage={leverage}, entry={entry_price} ({e})")
+            return
+
         qty = float(raw_qty.quantize(quant, rounding=ROUND_DOWN))
+
+        # ✅ qty가 0이면 주문 안되게
+        if qty <= 0:
+            settings.set_info(f"🚨 주문 수량이 0 이하입니다. (qty={qty})")
+            return
 
         # 5) 롱/숏 분기
         is_long = (data['signal'] == '롱')
-        side      = 'BUY' if is_long else 'SELL'
+        side = 'BUY' if is_long else 'SELL'
         pos_label = '롱 포지션' if is_long else '숏 포지션'
 
         # 6) 진입 주문 접수
@@ -135,15 +144,20 @@ def place_order(data, leverage):
                     filled_price = Decimal(info_e['avgPrice'])
                     settings.set_info(f"✅ {pos_label} 체결 — {filled_price:.2f} USDT")
                     # 체결되면 백그라운드로 TP/SL 스레드 시작
-                    tp_price = Decimal(str(data["tp"]))
-                    sl_price = Decimal(str(data["sl"]))
+                    try:
+                        tp_price = Decimal(str(data["tp"]))
+                        sl_price = Decimal(str(data["sl"]))
+                    except (InvalidOperation, ValueError) as e:
+                        settings.set_info(f"🚨 TP/SL 변환 오류: {e}")
+                        return
+
                     threading.Thread(
                         target=_order_lifecycle,
                         args=(qty, is_long, filled_price, tp_price, sl_price),
                         daemon=True
                     ).start()
                     return
-                elif status in ('CANCELED','REJECTED','EXPIRED'):
+                elif status in ('CANCELED', 'REJECTED', 'EXPIRED'):
                     settings.set_info(f"⚠️ {pos_label} 주문 실패(orderId={entry_id}, status={status})")
                     return
 
