@@ -98,8 +98,9 @@ def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
                                 if is_long else
                                 (filled_price - tp_fill) * executed_qty)
                         settings.set_info(f"🎉 익절 {idx+1}단계 체결 — +{profit:.2f} USDT")
+                        settings.add_profit(profit)  
                         filled_tps.add(idx)
-
+            time.sleep(1)
             # SL 체결 확인
             info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
             if info_sl['status'] == 'FILLED':
@@ -108,6 +109,7 @@ def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
                         if is_long else
                         (sl_fill - filled_price) * qty_dec)
                 settings.set_info(f"⚠️ 손절 체결 — -{loss:.2f} USDT")
+                settings.add_profit(-loss)  
                 return
 
             # 모든 TP 체결 시 종료

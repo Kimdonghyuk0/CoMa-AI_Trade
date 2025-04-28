@@ -6,13 +6,20 @@ import time
 from utils.data import fetch_klines
 from datetime import datetime, timezone
 from config.settings import b_key
+from decimal import Decimal
 
 # 전역 Info 박스와 set_info 함수 선언
 info_box = None
 trading_thread: threading.Thread | None = None
 stop_event: threading.Event | None = None
+total_profit = Decimal('0.00')
+profit_var = None 
+def add_profit(amount: Decimal):
+    global total_profit, profit_var
+    total_profit += amount
+    profit_var.set(f"총 수익: {total_profit:.2f} USDT")
 
-
+    
 def set_info(msg: str):
     """Info 박스에 메시지 추가 출력하고 자동 스크롤."""
     if info_box:
@@ -123,7 +130,8 @@ def get_user_settings():
             "SYMBOL": sym,
             "set_info": set_info,
             "AMOUNT_VALUE": amount_value,
-            "AMOUNT_MODE": amount_mode
+            "AMOUNT_MODE": amount_mode,
+            "add_profit": add_profit
 
         })
         from config.settings import configure
@@ -249,10 +257,22 @@ def get_user_settings():
         width=10
     ).pack(side="left", padx=5)
 
+    # ── 누적 수익 표시 ──
+    profit_var = tk.StringVar(value="총 수익: 0.00 USDT")
+    profit_label = tk.Label(
+      root,
+     textvariable=profit_var,
+     font=("맑은 고딕", 12, "bold"),
+     bg="#e0e0e0",
+     anchor="center"
+    )
+# 위치: 우측 하단 (예: x=420+..., y=10+580+10)
+    profit_label.place(x=820, y=600, width=170, height= 30)
+
     # 오른쪽: Info 박스
     info_frame = tk.LabelFrame(root, text="📋 실시간 정보", padx=5, pady=5)
     info_frame.place(x=420, y=10, width=570, height=580)
-    info_box = tk.Text(info_frame, bg="#f5f5f5")
+    info_box = tk.Text(info_frame, bg="#f5f5f5", state="disabled")
     info_box.pack(fill="both", expand=True)
     tk.Label(root, text="* 종료 시, 바이낸스에 예약된 모든 주문은 *반드시* 취소해야 합니다. *", fg="red").place(x=10, y=600)
     root.mainloop()
