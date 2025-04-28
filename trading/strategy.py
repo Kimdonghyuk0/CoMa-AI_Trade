@@ -69,6 +69,7 @@ def run_trading_cycle():
         else:
             log_warning("현재 관망 상태입니다.")
             settings.set_info("📉 리스크 대비 리워드 비율(RR) 미달 → 진입 보류하고 관망 유지 중입니다.")
+            settings.set_info(f"🧠 판단 근거: {trend_signal['reason']}")
         
         logger.info("트레이딩 사이클 완료")
         return df15['open_time'].iloc[-1]
