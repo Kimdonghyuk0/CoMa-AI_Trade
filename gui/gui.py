@@ -23,8 +23,10 @@ def add_profit(amount: Decimal):
 def set_info(msg: str):
     """Info 박스에 메시지 추가 출력하고 자동 스크롤."""
     if info_box:
+        info_box.config(state="normal")    # (1) 쓰기 가능 상태로 풀고
         info_box.insert(tk.END, msg + "\n")
         info_box.see(tk.END)
+        info_box.config(state="disabled")   # (2) 다시 잠금
 
 def run_trading_after_config(config):
     """
