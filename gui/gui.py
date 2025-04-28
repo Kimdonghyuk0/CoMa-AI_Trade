@@ -34,11 +34,7 @@ def run_trading_after_config(config):
     symbol   = config["SYMBOL"]
     interval = Client.KLINE_INTERVAL_15MINUTE
     last_minute = -1
-    # elapsed = 10000
-    # df15 = fetch_klines(symbol, interval, limit=1)
-    # current_open = df15['open_time'].iloc[-1]
-    # last_open = current_open
-    # time.sleep(1)
+   
     while not stop_event.is_set():
             now_utc = datetime.now(timezone.utc)
             minute = now_utc.minute
@@ -72,19 +68,6 @@ def run_trading_after_config(config):
                         time.sleep(4.5)
                     except Exception as e:
                         set_info(f"🚨 에러 발생: {str(e)}")
-
-            
-            # #now_utc = datetime.now(UTC)
-            
-            # # print("current_open", current_open)
-            # #  [추가] 예약 주문이 존재하면 취소 처리
-            # if current_open != last_open and not is_in_position_or_waiting():
-              
-
-            # # 2) 새 봉이 떴을 때만 전략 사이클 실행
-            # if current_open != last_open and not is_in_position_or_waiting():
-               
-
             # 1초마다 폴링
             time.sleep(1)
     set_info("⏹️ 자동매매 루프 종료")
@@ -237,10 +220,7 @@ def get_user_settings():
     entry_amount.insert(0, "100")
     entry_amount.pack()
 
-    # tk.Label(form, text="📈 목표 손익비 (예:1.3)").pack(pady=(10,0))
-    # entry_rr = tk.Entry(form, width=20)
-    # entry_rr.insert(0, "1.0")
-    # entry_rr.pack()
+  
 
     btns = tk.Frame(form)
     btns.pack(pady=20)

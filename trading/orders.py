@@ -4,6 +4,8 @@ import config.settings as settings
 import time
 import threading
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
+from requests.exceptions import ConnectionError
+from urllib3.exceptions import NewConnectionError
 
 def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
     client = get_client()
@@ -91,13 +93,13 @@ def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
                     info_tp = client.futures_get_order(symbol=settings.SYMBOL, orderId=tp_id)
                     if info_tp['status'] == 'FILLED':
                         tp_fill = Decimal(info_tp['avgPrice'])
-                        # 체결 수량은 info_tp['executedQty'] 사용 가능
                         executed_qty = Decimal(info_tp.get('executedQty', '0'))
                         profit = ((tp_fill - filled_price) * executed_qty
-                                  if is_long else
-                                  (filled_price - tp_fill) * executed_qty)
+                                if is_long else
+                                (filled_price - tp_fill) * executed_qty)
                         settings.set_info(f"🎉 익절 {idx+1}단계 체결 — +{profit:.2f} USDT")
                         filled_tps.add(idx)
+
             # SL 체결 확인
             info_sl = client.futures_get_order(symbol=settings.SYMBOL, orderId=sl_id)
             if info_sl['status'] == 'FILLED':
@@ -107,14 +109,21 @@ def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
                         (sl_fill - filled_price) * qty_dec)
                 settings.set_info(f"⚠️ 손절 체결 — -{loss:.2f} USDT")
                 return
+
             # 모든 TP 체결 시 종료
             if len(filled_tps) == len(tp_ids):
                 return
+
+        except (ConnectionError, NewConnectionError) as net_err:
+            time.sleep(5)  # 5초 정도 기다렸다가 다시 시도
+            continue
+
         except BinanceAPIException as e:
-            settings.set_info(f"⛔️ API 오류: {e}")
+            settings.set_info(f"⛔️ Binance API 오류: {e}")
             return
+
         except Exception as e:
-            settings.set_info(f"⛔️ 예외 발생: {e}")
+            settings.set_info(f"⛔️ 알 수 없는 예외 발생: {e}")
             return
 
 

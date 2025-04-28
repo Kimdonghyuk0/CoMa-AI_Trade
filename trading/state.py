@@ -12,7 +12,7 @@ def safe_get_open_orders(retries: int = 3, backoff: float = 1.0):
         try:
             return client.futures_get_open_orders(symbol=settings.SYMBOL)
         except requests.exceptions.ReadTimeout:
-            settings.set_info(f"⚠️ 예약 주문 조회 타임아웃 ({attempt}/{retries}) – {backoff}s 후 재시도")
+            # settings.set_info(f"⚠️ 예약 주문 조회 타임아웃 ({attempt}/{retries}) – {backoff}s 후 재시도")
             time.sleep(backoff)
     settings.set_info("❌ 예약 주문 조회 실패, 빈 리스트 반환")
     return []
@@ -27,7 +27,7 @@ def safe_get_position_info(retries: int = 3, backoff: float = 1.0):
         try:
             return client.futures_position_information(symbol=settings.SYMBOL)
         except requests.exceptions.ReadTimeout:
-            settings.set_info(f"⚠️ 포지션 조회 타임아웃 ({attempt}/{retries}) – {backoff}s 후 재시도")
+            # settings.set_info(f"⚠️ 포지션 조회 타임아웃 ({attempt}/{retries}) – {backoff}s 후 재시도")
             time.sleep(backoff)
     settings.set_info("❌ 포지션 조회 실패, 빈 리스트 반환")
     return []
