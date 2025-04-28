@@ -64,6 +64,8 @@ def run_trading_cycle():
         if trend_signal['signal'] != '관망':
             log_success(f"거래 신호 감지: {trend_signal['signal']}")
             place_order(trend_signal, settings.LEVERAGE)
+            settings.set_info(f"🧠 판단 근거: {trend_signal['reason']}")
+            
         else:
             log_warning("현재 관망 상태입니다.")
             settings.set_info("📉 리스크 대비 리워드 비율(RR) 미달 → 진입 보류하고 관망 유지 중입니다.")

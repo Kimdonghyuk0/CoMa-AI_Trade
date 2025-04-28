@@ -225,9 +225,9 @@ def get_user_settings():
         command=on_amount_mode_change
     ).pack()
 
-    tk.Label(form, text="💵 금액(달러$) or 비율(%) 입력 (예: 70 or 25)").pack(pady=(5,0))
+    tk.Label(form, text="💵 금액(달러$) or 비율(%) 입력 (예: 1000 or 25)").pack(pady=(5,0))
     entry_amount = tk.Entry(form, width=20)
-    entry_amount.insert(0, "100")
+    entry_amount.insert(0, "1000")
     entry_amount.pack()
 
   

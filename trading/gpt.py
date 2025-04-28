@@ -140,7 +140,7 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 ```
 
 응답은 오직 JSON 오브젝트만으로 구성하십시오.  
-– 최상위에 아래 네 개 필드(“signal”, “entry”, “tp”, “sl”)만 포함  
+– 최상위에 아래 네 개 필드(“signal”, “entry”, “tp”, “sl”, "reason")만 포함  
 – 중첩된 객체나 배열, 추가 텍스트, 주석일체 금지  
 – JSON 블록 바깥에는 반드시 `<EOF>`만 출력  
 예시:
@@ -148,7 +148,8 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
   "signal": "롱" | "숏" | "관망",
   "entry": 진입가격,
   "tp": 익절가,
-  "sl": 손절가
+  "sl": 손절가,
+  "reason": 판단 근거 
 }}
 
 <EOF>
