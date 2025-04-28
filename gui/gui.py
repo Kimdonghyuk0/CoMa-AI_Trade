@@ -47,29 +47,31 @@ def run_trading_after_config(config):
             from trading.state import is_in_position
             
             # 1) 가장 최근 15분봉 한 개만 가져오기
-            if minute % 15 == 0 and minute != last_minute and second < 5 and not is_in_position():
-                print("15분봉 떴을 때만 전략 사이클 실행")
-                last_minute = minute
-                try:
-                    time.sleep(2)
-                    df15 = fetch_klines(symbol, interval, limit=1)
-                    current_open = df15['open_time'].iloc[-1]
-                    open_orders = config["client"].futures_get_open_orders(symbol=symbol)
-                    #print("open_orders", open_orders)
-                    if open_orders:
-                        set_info("예약 주문 전부 삭제 중...")
-                        config["client"].futures_cancel_all_open_orders(symbol=symbol)
-                    print("새 봉이 떴을 때만 전략 사이클 실행")
-                    # last_open = current_open
-                    set_info(" ")
-                    set_info(f"📊 최신 차트 수신 완료...")
-                    time.sleep(0.2)
-                    set_info(f"UTC: {current_open}")
-                    set_info(f"🤖 전략 최적화 중... 시장 움직임에 가장 적합한 진입 타점 추출 중...")
-                    run_trading_cycle()
-                    time.sleep(4.5)
-                except Exception as e:
-                    set_info(f"🚨 에러 발생: {str(e)}")
+            if minute % 15 == 0 and minute != last_minute and second < 5:
+                last_minute = minute             
+                if not is_in_position():
+                    print("15분봉 떴을 때만 전략 사이클 실행")
+                  
+                    try:
+                        time.sleep(2)
+                        df15 = fetch_klines(symbol, interval, limit=1)
+                        current_open = df15['open_time'].iloc[-1]
+                        open_orders = config["client"].futures_get_open_orders(symbol=symbol)
+                        #print("open_orders", open_orders)
+                        if open_orders:
+                            set_info("예약 주문 전부 삭제 중...")
+                            config["client"].futures_cancel_all_open_orders(symbol=symbol)
+                        print("새 봉이 떴을 때만 전략 사이클 실행")
+                        # last_open = current_open
+                        set_info(" ")
+                        set_info(f"📊 최신 차트 수신 완료...")
+                        time.sleep(0.2)
+                        set_info(f"UTC: {current_open}")
+                        set_info(f"🤖 전략 최적화 중... 시장 움직임에 가장 적합한 진입 타점 추출 중...")
+                        run_trading_cycle()
+                        time.sleep(4.5)
+                    except Exception as e:
+                        set_info(f"🚨 에러 발생: {str(e)}")
 
             
             # #now_utc = datetime.now(UTC)
