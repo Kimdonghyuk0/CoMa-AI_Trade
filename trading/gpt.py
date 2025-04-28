@@ -99,6 +99,10 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 - **counter – 돌파 진입**: 수렴 구간 돌파 확인 시  
 - **관망**: 위 조건 외 모든 경우  
 
+단, 다음 과열 조건이 발생하면 추세와 반대 방향으로 매매를 고려한다.(**counter**)
+   - 상승장에서 RSI 70 이상 + Stochastic 과매수 후 하락 전환 + 거래량 감소 + MACD 데드크로스
+   - 하락장에서 RSI 30 이하 + Stochastic 과매도 후 상승 전환 + 거래량 감소 + MACD 골든크로스
+   (이 중 3개 이상 충족 시, 반대 방향 매매 고려)
 ---
 
 3단계: 진입 조건
