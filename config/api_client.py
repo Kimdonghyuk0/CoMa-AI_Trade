@@ -12,14 +12,21 @@ class SyncedClient(Client):
 
     def _adjust_timestamp(self):
         return int(time.time() * 1000 + self.time_offset)
+class SyncedClient(Client):
+    def __init__(self, api_key, api_secret):
+        super().__init__(api_key, api_secret)
+        server_ts = self.get_server_time()['serverTime']
+        local_ts = int(time.time() * 1000)
+        self.time_offset = server_ts - local_ts
+
+    def _adjust_timestamp(self):
+        return int(time.time() * 1000 + self.time_offset)
 
     def _request(self, method, uri, signed=False, force_params=False, **kwargs):
-        """
-        모든 signed 요청에 대해 timestamp를 자동 추가하도록 오버라이드
-        """
+        params = kwargs.get('params', {}).copy()  # ✨ params dict 꺼내서
         if signed:
-            kwargs['timestamp'] = self._adjust_timestamp()
-        # force_params까지 그대로 전달
+            params['timestamp'] = self._adjust_timestamp()  # ✨ timestamp 추가
+        kwargs['params'] = params  # ✨ 다시 params로
         return super()._request(method, uri, signed, force_params, **kwargs)
 
 _client = None
