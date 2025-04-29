@@ -5,7 +5,7 @@ import config.settings as settings
 import re
 # OpenAI API 키 설정
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
-def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
+def build_prompt(ind1d, ind1h, ind15m, ind4h, df1d, df1h, df15, df4h, mode='trend'):
     """
      시장 상태 및 모드(트렌드/반전)에 따른 프롬프트 템플릿 생성
     :param state: '상승', '하락', '횡보'
@@ -31,16 +31,21 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
     #     )
             # 필요한 컬럼만 추출 (프롬프트 크기 절약)
     cols = ["open_time", "open", "high", "low", "close", "volume"]
-    df1h_trimmed = df1h[cols].tail(30).to_dict(orient='records')
-    df15_trimmed = df15[cols].tail(40).to_dict(orient='records')
+    df1d_trimmed = df1d[cols].tail(30).to_dict(orient='records')
+    df1h_trimmed = df1h[cols].tail(48).to_dict(orient='records')
+    df15_trimmed = df15[cols].tail(60).to_dict(orient='records')
+    df4h_trimmed = df4h[cols].tail(30).to_dict(orient='records')
 
     payload = {
+       "1d_candles": df1d_trimmed,
+        "4h_candles": df4h_trimmed,
         "1h_candles": df1h_trimmed,
         "15m_candles": df15_trimmed,
+        "1d": ind1d,
+        "4h": ind4h,
         "1h": ind1h,
         "15m": ind15m
     }
-
     prompt_json = json.dumps(payload, ensure_ascii=False, default=str)
     # 환경정보 및 조건 안내
     template = f"""
@@ -131,10 +136,16 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
 ---
 
 아래는 분석용 전체 캔들 시퀀스와 최신 지표 데이터입니다:
- 최근 1시간봉 30개 (1h_candles)
- 최근 15분봉 40개 (15m_candles)
- 최신 1시간 지표: 1h
- 최신 15분 지표: 15m
+
+ - 최근 1일봉 30개 (1d_candles)
+ - 최근 4시간봉 30개 (4h_candles)
+ - 최근 1시간봉 30개 (1h_candles)
+ - 최근 15분봉 40개 (15m_candles)
+
+ - 최신 1일 지표: 1d
+ - 최신 4시간 지표: 4h
+ - 최신 1시간 지표: 1h
+ - 최신 15분 지표: 15m
 ```json
 {prompt_json}
 ```
@@ -149,7 +160,7 @@ def build_prompt(state, ind1h, ind15m, df1h, df15, mode='trend'):
   "entry": 진입가격,
   "tp": 익절가,
   "sl": 손절가,
-  "reason": 판단 근거 
+  "reason": 판단 근거(한글로) 
 }}
 
 <EOF>

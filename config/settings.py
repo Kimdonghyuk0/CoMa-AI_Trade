@@ -12,7 +12,8 @@ TARGET_RR = None
 set_info = None
 AMOUNT_VALUE = None
 AMOUNT_MODE = None  
-
+add_profit = None
+IS_ENTRY_ALLOWED: bool = True
 def configure(config_dict):
     """
     get_user_settings()에서 받은 설정 dict를 그대로 전역 변수에 할당.

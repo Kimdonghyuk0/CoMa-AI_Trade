@@ -7,6 +7,7 @@ from utils.data import fetch_klines
 from datetime import datetime, timezone
 from config.settings import b_key
 from decimal import Decimal
+from config import settings
 
 # 전역 Info 박스와 set_info 함수 선언
 info_box = None
@@ -43,19 +44,25 @@ def run_trading_after_config(config):
     symbol   = config["SYMBOL"]
     interval = Client.KLINE_INTERVAL_15MINUTE
     last_minute = -1
+    last_hour   = -1
+    settings.is_entry_allowed = True
    
     while not stop_event.is_set():
             now_utc = datetime.now(timezone.utc)
             minute = now_utc.minute
             second = now_utc.second
-            
+            hour = now_utc.hour
+             # 1️⃣ 1시간봉 변화 감지 → 진입 재허용
+            if hour != last_hour:
+                last_hour = hour
+                settings.is_entry_allowed = True
+
             from trading.state import is_in_position
             
             # 1) 가장 최근 15분봉 한 개만 가져오기
             if minute % 15 == 0 and minute != last_minute and second < 5:
                 last_minute = minute             
-                if not is_in_position():
-                    print("15분봉 떴을 때만 전략 사이클 실행")
+                if not is_in_position() and settings.is_entry_allowed:
                   
                     try:
                         time.sleep(2)
@@ -64,7 +71,8 @@ def run_trading_after_config(config):
                         open_orders = config["client"].futures_get_open_orders(symbol=symbol)
                         #print("open_orders", open_orders)
                         if open_orders:
-                            set_info("예약 주문 전부 삭제 중...")
+                            set_info(" ")
+                            set_info("⏳ 예약 주문 전부 삭제 중...")
                             config["client"].futures_cancel_all_open_orders(symbol=symbol)
                         print("새 봉이 떴을 때만 전략 사이클 실행")
                         # last_open = current_open
@@ -88,7 +96,7 @@ def get_user_settings():
     GUI를 띄워 사용자 설정을 받고,
     설정 완료 시 자동으로 run_trading_after_config 스레드를 띄웁니다.
     """
-    global info_box
+    global info_box,profit_var
     config = {}
 
     def on_submit():
@@ -269,7 +277,7 @@ def get_user_settings():
      anchor="center"
     )
 # 위치: 우측 하단 (예: x=420+..., y=10+580+10)
-    profit_label.place(x=820, y=600, width=170, height= 30)
+    profit_label.place(x=790, y=600, width=200, height= 30)
 
     # 오른쪽: Info 박스
     info_frame = tk.LabelFrame(root, text="📋 실시간 정보", padx=5, pady=5)
