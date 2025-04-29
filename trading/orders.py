@@ -108,8 +108,8 @@ def _order_lifecycle(qty, is_long, filled_price, tp_price, sl_price):
                 loss = (-(filled_price - sl_fill) * qty_dec
                         if is_long else
                         (sl_fill - filled_price) * qty_dec)
-                settings.set_info(f"⚠️ 손절 주문 체결 — -{loss:.2f} USDT")
-                settings.add_profit(-loss)
+                settings.set_info(f"⚠️ 손절 주문 체결 — {loss:.2f} USDT")
+                settings.add_profit(loss)
                 settings.is_entry_allowed = False   # <-- 전역 스코프(or 설정 dict)에 있는 플래그
                 settings.set_info("🚫 다음 1시간봉 나오기기 전까지 진입 금지")  
                 return
