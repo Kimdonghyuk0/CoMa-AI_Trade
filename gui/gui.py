@@ -90,6 +90,37 @@ def run_trading_after_config(config):
     set_info("⏹️ 자동매매 루프 종료")
 
         
+def cancel_all_orders():
+    """모든 예약 주문 삭제"""
+    try:
+        client = settings.client
+        symbol = settings.SYMBOL
+        client.futures_cancel_all_open_orders(symbol=symbol)
+        set_info(f"🧹 {symbol} - 모든 예약 주문 삭제 완료")
+    except Exception as e:
+        set_info(f"🚨 예약 주문 삭제 에러: {str(e)}")
+        
+def close_position():
+    """현재 포지션 즉시 시장가로 청산"""
+    try:
+        client = settings.client
+        symbol = settings.SYMBOL
+        positions = client.futures_position_information(symbol=symbol)
+        for pos in positions:
+            if Decimal(pos['positionAmt']) != 0:
+                side = 'SELL' if Decimal(pos['positionAmt']) > 0 else 'BUY'
+                qty = abs(Decimal(pos['positionAmt']))
+                client.futures_create_order(
+                    symbol=symbol,
+                    side=side,
+                    type='MARKET',
+                    quantity=float(qty)
+                )
+                set_info(f"🧹 {symbol} - 포지션 {side} {qty} 청산 완료")
+            else:
+                set_info(f"⚡️ {symbol} - 현재 포지션이 없습니다.")
+    except Exception as e:
+        set_info(f"🚨 {symbol} - 포지션 정리 에러: {str(e)}")
 
 def get_user_settings():
     """
@@ -239,16 +270,19 @@ def get_user_settings():
     entry_amount.pack()
 
   
-
+    spacer = tk.Frame(form)
+    spacer.pack(expand=True, fill="y") 
+    
     btns = tk.Frame(form)
-    btns.pack(pady=20)
+    btns.pack(pady=5)
     tk.Button(
         btns,
         text="✅ 설정 저장 및 시작",
         command=on_submit,
         bg="#4CAF50",
         fg="white",
-        width=15
+        width=17,
+        font=("맑은 고딕", 10, "bold")
     ).pack(side="left", padx=5)
     # tk.Button(
     #     btns,
@@ -264,9 +298,32 @@ def get_user_settings():
         command=on_cancel,
         bg="#f44336",
         fg="white",
-        width=10
+        width=17,
+        font=("맑은 고딕", 10, "bold")
+    ).pack(side="left", padx=5)
+   
+    actions = tk.Frame(form)
+    actions.pack(pady=(10, 0))  # 약간만 위아래 간격
+
+    tk.Button(
+        actions,
+        text="포지션 정리",
+        command=close_position,
+        bg="#f44336",
+        fg="white",
+        width=17,
+        font=("맑은 고딕", 10, "bold")
     ).pack(side="left", padx=5)
 
+    tk.Button(
+        actions,
+        text="예약 주문 삭제",
+        command=cancel_all_orders,
+        bg="#f44336",
+        fg="white",
+        width=17,
+        font=("맑은 고딕", 10, "bold")
+    ).pack(side="left", padx=5)
     # ── 누적 수익 표시 ──
     profit_var = tk.StringVar(value="총 수익: 0.00 USDT")
     profit_label = tk.Label(
